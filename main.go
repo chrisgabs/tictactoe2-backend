@@ -16,7 +16,7 @@ var upgrader = websocket.Upgrader{
 
 type Player struct {
 	Conn *websocket.Conn
-	id   float64
+	Id   float64
 }
 
 var connectedPlayers = []Player{}
@@ -33,11 +33,16 @@ var connectedPlayers = []Player{}
 // 	}
 // }
 
-type messageData struct {
+type MoveData struct {
 	ClientX      float64
 	ClientY      float64
 	PlayerNumber float64
 	PieceID      string
+}
+
+type MessageData struct {
+	EventType string
+	Data interface{}
 }
 
 var numConnections float64 = 0.0
@@ -46,17 +51,11 @@ func sampleEndpoint(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "sample endpoint working")
 }
 
-func sendToAllExceptSelf(data []byte) {
-	var msgData messageData
-	err := json.Unmarshal(data, &msgData)
-	if err != nil {
-		fmt.Println("error in unmrashalling")
-		log.Println(err)
-		return
-	}
+func sendToAllExceptSelf(data MessageData) {
+	move := data.Data.(MoveData)
 	for _, player := range connectedPlayers {
-		if player.id != msgData.PlayerNumber {
-			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
+		if player.Id != move.PlayerNumber {
+			if err := player.Conn.WriteJSON(move); err != nil {
 				log.Println(err)
 				return
 			}
@@ -80,7 +79,7 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer func() {
-		fmt.Printf("disconnected connection id: %v\n", p.id)
+		fmt.Printf("disconnected id: %v\n", p.Id)
 	}()
 
 	connectedPlayers = append(connectedPlayers, p)
@@ -96,11 +95,36 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if messageType == websocket.TextMessage {
-			fmt.Printf("From client: %v | %v\n", string(data), p.id)
+		
+		// parse message
+		var message MessageData
+		if err1 := json.Unmarshal(data, &message); err1 != nil {
+			log.Println("error in unmrashalling line 106")
+			log.Println(err1)
+			return
 		}
+		
+		fmt.Printf("| %v | %v | %v \n", message.EventType, messageType, message)
 
-		sendToAllExceptSelf(data)
+		// check what to do based on message type
+		switch eType := message.EventType; eType {
+			case "connect":
+				response := MessageData {"connect", p,}
+				if err := ws.WriteJSON(response); err != nil {
+					fmt.Println("error in writing JSON 120")
+				}
+			case "move":
+				moveData, _ := message.Data.(map[string]interface{})
+				fmt.Println(moveData)
+				move := MoveData{
+					ClientX:      moveData["ClientX"].(float64),
+					ClientY:      moveData["ClientY"].(float64),
+					PlayerNumber: moveData["PlayerNumber"].(float64),
+					PieceID:      moveData["PieceID"].(string),
+				}
+				response := MessageData{"move", move}
+				sendToAllExceptSelf(response)
+		}
 	}
 }
 
