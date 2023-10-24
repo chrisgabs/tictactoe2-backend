@@ -19,6 +19,7 @@ type Player struct {
 	Id   float64
 }
 
+// TODO: Implement this as a map instead of slice
 var connectedPlayers = []Player{}
 
 // func (p Player) broadCastMousePosition(data []byte) {
@@ -55,9 +56,9 @@ func sendToAllExceptSelf(data MessageData) {
 	move := data.Data.(MoveData)
 	for _, player := range connectedPlayers {
 		if player.Id != move.PlayerNumber {
-			if err := player.Conn.WriteJSON(move); err != nil {
+			if err := player.Conn.WriteJSON(data); err != nil {
+				log.Println("error sending json 62")
 				log.Println(err)
-				return
 			}
 		}
 	}
@@ -72,12 +73,22 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer ws.Close()
-
+	
 	p := Player{
 		ws,
 		numConnections,
 	}
 
+	defer func () {
+		var updatedSlice = []Player{}
+		for _, player := range connectedPlayers {
+			if player.Id != p.Id {
+				updatedSlice = append(updatedSlice, player)
+			}
+		}
+		connectedPlayers = updatedSlice;
+	}()
+	
 	defer func() {
 		fmt.Printf("disconnected id: %v\n", p.Id)
 	}()
