@@ -22,18 +22,6 @@ type Player struct {
 // TODO: Implement this as a map instead of slice
 var connectedPlayers = []Player{}
 
-// func (p Player) broadCastMousePosition(data []byte) {
-// 	// toSend, err := json.Marshal(data)
-// 	// if err != nil {
-// 	// 	log.Println("error in marshaling broadcast message data")
-// 	// }
-
-// 	if err := p.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-// 		log.Println(err)
-// 		return
-// 	}
-// }
-
 type MoveData struct {
 	ClientX      float64
 	ClientY      float64
@@ -43,6 +31,7 @@ type MoveData struct {
 
 type MessageData struct {
 	EventType string
+	PlayerId float64
 	Data interface{}
 }
 
@@ -53,9 +42,9 @@ func sampleEndpoint(w http.ResponseWriter, r *http.Request) {
 }
 
 func sendToAllExceptSelf(data MessageData) {
-	move := data.Data.(MoveData)
+	// move := data.Data.(MoveData)
 	for _, player := range connectedPlayers {
-		if player.Id != move.PlayerNumber {
+		if player.Id != data.PlayerId {
 			if err := player.Conn.WriteJSON(data); err != nil {
 				log.Println("error sending json 62")
 				log.Println(err)
@@ -120,10 +109,16 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 		// check what to do based on message type
 		switch eType := message.EventType; eType {
 			case "connect":
-				response := MessageData {"connect", p,}
+				response := MessageData {"connect", p.Id, p,}
 				if err := ws.WriteJSON(response); err != nil {
 					fmt.Println("error in writing JSON 120")
 				}
+			case "drop":
+				response := MessageData {"drop", p.Id, message.Data,}
+				sendToAllExceptSelf(response)
+			case "dragend":
+				response := MessageData {"dragend", p.Id, nil,}
+				sendToAllExceptSelf(response)
 			case "move":
 				moveData, _ := message.Data.(map[string]interface{})
 				fmt.Println(moveData)
@@ -133,7 +128,7 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 					PlayerNumber: moveData["PlayerNumber"].(float64),
 					PieceID:      moveData["PieceID"].(string),
 				}
-				response := MessageData{"move", move}
+				response := MessageData{"move", p.Id, move}
 				sendToAllExceptSelf(response)
 		}
 	}
