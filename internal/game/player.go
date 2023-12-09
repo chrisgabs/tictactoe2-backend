@@ -87,9 +87,7 @@ func (p *Player) StartListeningToClient() {
 
 		log.Printf("| %v | %v | %v \n", message.EventType, message.PlayerNumber, message)
 
-		// check what to do based on message type
-		switch eType := message.EventType; eType {
-		case Connect:
+		if message.EventType == Connect {
 			data := make(map[string]interface{})
 			data["playerNumber"] = p.PlayerNumber
 			data["roomId"] = p.Room.RoomId
@@ -100,47 +98,53 @@ func (p *Player) StartListeningToClient() {
 			} else {
 				p.WSConnected = true
 			}
-		case Drop: //
-			response := MessageData{Drop, p.PlayerNumber, message.Data}
-			jsonString, _ := json.Marshal(message.Data)
-			var dropData DropData
-			err := json.Unmarshal(jsonString, &dropData)
-			if err != nil {
-				log.Printf("Error in unmarshalling drop data: %v\n", err)
-				return
-			}
-			p.Room.Receiver <- &response
-			p.Room.Board.placePiece(dropData)
-		case DragEnd:
-			response := MessageData{DragEnd, p.PlayerNumber, message.Data}
-			p.Room.Receiver <- &response
-		case Move:
-			moveData, _ := message.Data.(map[string]interface{})
-			move := MoveData{
-				ClientX:      moveData["ClientX"].(float64),
-				ClientY:      moveData["ClientY"].(float64),
-				PlayerNumber: moveData["PlayerNumber"].(float64),
-				PieceID:      moveData["PieceID"].(string),
-			}
-			response := MessageData{Move, p.PlayerNumber, move}
-			p.Room.Receiver <- &response
-		case Join:
-			response := MessageData{Join, p.PlayerNumber, message.Data}
-			p.Room.Receiver <- &response
-		case Reset:
-			data := make(map[string]string)
-			data["DisplayName"] = p.DisplayName
-			response := MessageData{Reset, 0, data}
-			p.Room.Receiver <- &response
-			p.Room.Board.ResetBoard()
-		case Leave:
-			data := make(map[string]string)
-			data["DisplayName"] = p.DisplayName
-			response := MessageData{Leave, p.PlayerNumber, data}
-			p.Room.Receiver <- &response
-			p.Room.RemovePlayer(p)
-			p.Room.Board.ResetBoard()
-		} // case
+		}
+
+		if p.Room.GameOngoing || message.EventType == Leave {
+			// check what to do based on message type
+			switch eType := message.EventType; eType {
+			case Drop: //
+				response := MessageData{Drop, p.PlayerNumber, message.Data}
+				jsonString, _ := json.Marshal(message.Data)
+				var dropData DropData
+				err := json.Unmarshal(jsonString, &dropData)
+				if err != nil {
+					log.Printf("Error in unmarshalling drop data: %v\n", err)
+					return
+				}
+				p.Room.Receiver <- &response
+				p.Room.Board.placePiece(dropData)
+			case DragEnd:
+				response := MessageData{DragEnd, p.PlayerNumber, message.Data}
+				p.Room.Receiver <- &response
+			case Move:
+				moveData, _ := message.Data.(map[string]interface{})
+				move := MoveData{
+					ClientX:      moveData["ClientX"].(float64),
+					ClientY:      moveData["ClientY"].(float64),
+					PlayerNumber: moveData["PlayerNumber"].(float64),
+					PieceID:      moveData["PieceID"].(string),
+				}
+				response := MessageData{Move, p.PlayerNumber, move}
+				p.Room.Receiver <- &response
+			case Join:
+				response := MessageData{Join, p.PlayerNumber, message.Data}
+				p.Room.Receiver <- &response
+			case Reset:
+				data := make(map[string]string)
+				data["DisplayName"] = p.DisplayName
+				response := MessageData{Reset, 0, data}
+				p.Room.Receiver <- &response
+				p.Room.Board.ResetBoard()
+			case Leave:
+				data := make(map[string]string)
+				data["DisplayName"] = p.DisplayName
+				response := MessageData{Leave, p.PlayerNumber, data}
+				p.Room.Receiver <- &response
+				p.Room.RemovePlayer(p)
+				p.Room.Board.ResetBoard()
+			} // switch
+		} // if
 	} // for
 
 } // function
