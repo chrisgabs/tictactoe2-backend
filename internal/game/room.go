@@ -29,9 +29,7 @@ func (r *Room) StartGame() {
 	// 0 - send to all
 	for data := range r.Receiver {
 		if r.Player1 == nil || r.Player2 == nil {
-			if data.EventType != Leave {
-				return
-			}
+			return
 		}
 		if data.PlayerNumber == 1 {
 			r.Player2.ReceiveChannel <- data
@@ -40,6 +38,16 @@ func (r *Room) StartGame() {
 		} else {
 			r.Player1.ReceiveChannel <- data
 			r.Player2.ReceiveChannel <- data
+		}
+	}
+}
+
+func (r *Room) handleLeavingPlayer(data *MessageData) {
+	if r.GameOngoing {
+		if data.PlayerNumber == 1 {
+			r.Player2.ReceiveChannel <- data
+		} else if data.PlayerNumber == 2 {
+			r.Player1.ReceiveChannel <- data
 		}
 	}
 }
@@ -74,6 +82,7 @@ func (r *Room) RemovePlayer(p *Player) {
 	} else {
 		r.Player2 = nil
 	}
+	r.GameOngoing = false
 	if r.Player1 == nil && r.Player2 == nil {
 		delete(r.Game.Rooms, r.RoomId)
 		log.Printf("Killing room [%v]: No more players", r.RoomId)

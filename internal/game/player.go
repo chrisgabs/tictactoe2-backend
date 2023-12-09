@@ -140,7 +140,7 @@ func (p *Player) StartListeningToClient() {
 				data := make(map[string]string)
 				data["DisplayName"] = p.DisplayName
 				response := MessageData{Leave, p.PlayerNumber, data}
-				p.Room.Receiver <- &response
+				p.Room.handleLeavingPlayer(&response)
 				p.Room.RemovePlayer(p)
 				p.Room.Board.ResetBoard()
 			} // switch
