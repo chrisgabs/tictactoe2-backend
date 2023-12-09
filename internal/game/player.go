@@ -2,9 +2,9 @@ package game
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
+	"time"
 )
 
 type Player struct {
@@ -14,6 +14,8 @@ type Player struct {
 	Room           *Room
 	ReceiveChannel chan *MessageData
 	Conn           *websocket.Conn
+	WSConnected    bool
+	Game           *GameInstance
 }
 
 type MoveData struct {
@@ -36,6 +38,28 @@ type DropData struct {
 	IsValidMove  bool   `json:"isValidMove"`
 }
 
+func (p *Player) startVultureTask() {
+	timer := time.NewTimer(5 * time.Second)
+	timedOut := false
+	go func() {
+		<-timer.C
+		timedOut = true
+	}()
+	for {
+		if p.WSConnected {
+			log.Printf("Player [%v] successfully reconnected", p.DisplayName)
+			return
+		}
+		if timedOut {
+			log.Printf("Player [%v] TIMEDOUT", p.DisplayName)
+			close(p.ReceiveChannel)
+			p.Room.RemovePlayer(p)
+			p.Game.Players[p.SessionId] = nil
+			return
+		}
+	}
+}
+
 func (p *Player) StartListeningToClient() {
 
 	defer func(Conn *websocket.Conn) {
@@ -44,6 +68,8 @@ func (p *Player) StartListeningToClient() {
 			log.Printf("Error closing WS connection of [%v]%v : %v\n", p.SessionId, p.DisplayName, err)
 		}
 		log.Printf("Closed WS connection of [%v]%v\n", p.SessionId, p.DisplayName)
+		p.WSConnected = false
+		go p.startVultureTask()
 	}(p.Conn)
 
 	for {
@@ -71,6 +97,8 @@ func (p *Player) StartListeningToClient() {
 			response := MessageData{Connect, p.PlayerNumber, data}
 			if err := p.Conn.WriteJSON(response); err != nil {
 				log.Printf("error in writing JSON 64: %v\n", err)
+			} else {
+				p.WSConnected = true
 			}
 		case Drop: //
 			response := MessageData{Drop, p.PlayerNumber, message.Data}
@@ -99,6 +127,12 @@ func (p *Player) StartListeningToClient() {
 		case Join:
 			response := MessageData{Join, p.PlayerNumber, message.Data}
 			p.Room.Receiver <- &response
+		case Reset:
+			data := make(map[string]string)
+			data["DisplayName"] = p.DisplayName
+			response := MessageData{Reset, 0, data}
+			p.Room.Receiver <- &response
+			p.Room.Board.ResetBoard()
 		}
 	}
 
@@ -110,11 +144,12 @@ func (p *Player) StartListeningToClient() {
 //     send a health check. if health check fails, then kill the go routine and clean up player.
 func (p *Player) StartListeningToRoom() {
 	defer func() {
-		fmt.Printf("[%v] Stopped listening to room [%v]\n", p.SessionId, p.Room.RoomId)
+		log.Printf("[%v] Stopped listening to room [%v]\n", p.SessionId, p.Room.RoomId)
 	}()
 	for data := range p.ReceiveChannel {
 		if err := p.Conn.WriteJSON(data); err != nil {
 			log.Printf("ERROR [%v] writing to connection: %v\n", p.SessionId, err)
+			return
 		}
 	}
 }

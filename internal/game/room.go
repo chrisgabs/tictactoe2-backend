@@ -14,22 +14,35 @@ type Room struct {
 // StartGame Start receiving MessageData from players in the room
 func (r *Room) StartGame() {
 	log.Printf("Room [%v] game starting with players [%v] and [%v]\n", r.RoomId, r.Player1.SessionId, r.Player2.SessionId)
+	r.GameOngoing = true
 	// implement different types of message types.
 	// ex: if leave, restart the game, force other player to refresh board
-	defer log.Printf("Room [%v] Stopping: Insufficient number of players", r.RoomId)
+	defer func() {
+		log.Printf("Room [%v] Stopping: Insufficient number of players", r.RoomId)
+		r.GameOngoing = false
+	}()
+
+	// PlayerNumber
+	// 1 - send to 2
+	// 2 - send to 1
+	// 0 - send to all
 	for data := range r.Receiver {
 		if r.Player1 == nil || r.Player2 == nil {
 			return
 		}
 		if data.PlayerNumber == 1 {
 			r.Player2.ReceiveChannel <- data
+		} else if data.PlayerNumber == 2 {
+			r.Player1.ReceiveChannel <- data
 		} else {
 			r.Player1.ReceiveChannel <- data
+			r.Player2.ReceiveChannel <- data
 		}
 	}
 }
 
 // AddPlayer check whether to put player in p1 or p2
+// notifies opponent that player has joined via WS
 // set's p's playerNumber variable
 func (r *Room) AddPlayer(p *Player) (int, bool) {
 	playerNumber := 0
@@ -47,6 +60,24 @@ func (r *Room) AddPlayer(p *Player) (int, bool) {
 	p.Room = r
 	if r.Player1 != nil && r.Player2 != nil {
 		go r.StartGame()
+		r.notifyOpponent(p)
 	}
 	return playerNumber, true
+}
+
+func (r *Room) RemovePlayer(p *Player) {
+	if p.PlayerNumber == 1 {
+		r.Player1 = nil
+	} else {
+		r.Player2 = nil
+	}
+}
+
+func (r *Room) notifyOpponent(joiningPlayer *Player) {
+	data := make(map[string]string)
+	data["opponentDisplayName"] = joiningPlayer.DisplayName
+	notification := MessageData{EventType: Join, PlayerNumber: joiningPlayer.PlayerNumber, Data: data}
+	//if r.GameOngoing {
+	r.Receiver <- &notification // gets stuck here if notification is not consumed (when opponent does not exist or game is not yet started)
+	//}
 }

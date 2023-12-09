@@ -6,5 +6,7 @@ const (
 	Drop    = "drop"
 	DragEnd = "dragend"
 	Move    = "move"
-	Join    = "Join"
+	Join    = "join"
+	Reset   = "reset"
+	Leave   = "leave"
 )

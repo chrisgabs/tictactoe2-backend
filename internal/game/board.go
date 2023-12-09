@@ -50,6 +50,10 @@ func (board *Board) AsRawMessage() json.RawMessage {
 	return dataJSON
 }
 
+func (board *Board) ResetBoard() {
+	board.b = [3][3]pieceData{}
+}
+
 func CreateEmptyBoard() Board {
 	return Board{
 		b: [3][3]pieceData{},

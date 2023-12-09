@@ -24,6 +24,8 @@ func (g *GameInstance) CreatePlayer(addr string, displayName string, ws *websock
 			DisplayName:    displayName,
 			ReceiveChannel: make(chan *MessageData),
 			Conn:           ws,
+			WSConnected:    false, // set to true when actual ws connection is confirmed
+			Game:           g,
 		}
 		return g.Players[addr], true
 	}

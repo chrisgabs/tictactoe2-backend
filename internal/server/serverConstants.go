@@ -1,8 +1,11 @@
 package server
 
 const (
-	ADDRESS       = "192.168.19.7"
-	PORT          = "8080"
-	CERTFILE_PATH = "C:\\Users\\chris\\repos\\goprojs\\tictactoe2-backend\\internal\\server\\localhost.crt"
-	KEYFILE_PATH  = "C:\\Users\\chris\\repos\\goprojs\\tictactoe2-backend\\internal\\server\\localhost.key"
+	ServerAddress    = "192.168.20.7"
+	ServerPort       = "8080"
+	FrontendPort     = "5173"
+	FrontendAddress  = "localhost"
+	FrontendProtocol = "http://"
+	CertfilePath     = "C:\\Users\\chris\\repos\\goprojs\\tictactoe2-backend\\internal\\server\\localhost+1.pem"
+	KeyfilePath      = "C:\\Users\\chris\\repos\\goprojs\\tictactoe2-backend\\internal\\server\\localhost+1-key.pem"
 )

@@ -16,15 +16,16 @@ var g = game.GameInstance{
 	Players: map[string]*game.Player{},
 }
 
+//var frontendOrigin = fmt.Sprintf("%v%v:%v", FrontendProtocol, FrontendAddress, FrontendPort)
+
 func Run() {
 
 	log.Println("Starting Server...")
 
 	setupRoutes()
 
-	log.Printf("Listening to %v:%v", ADDRESS, PORT)
-	//err := http.ListenAndServe(fmt.Sprintf("%v:%v", ADDRESS, PORT), nil)+
-	err := http.ListenAndServeTLS(ADDRESS+":"+PORT, CERTFILE_PATH, KEYFILE_PATH, nil)
+	log.Printf("Listening to %v:%v", ServerAddress, ServerPort)
+	err := http.ListenAndServeTLS(ServerAddress+":"+ServerPort, CertfilePath, KeyfilePath, nil)
 
 	if err != nil {
 		fmt.Printf("ERROR failed to listen and server %v\n", err)
@@ -43,14 +44,17 @@ func setupRoutes() {
 }
 
 func test(w http.ResponseWriter, r *http.Request) {
+	if HandlePreFlight(w, r) {
+		log.Println("handled preflight test")
+		return
+	}
 	//w.Header().Set("Access-Control-Allow-Methods", "GET")
 	//w.Header().Set("Content-Type", "application/json")
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	//w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
-	origin := r.Header.Get("Origin")
-	log.Println(origin + " Testing")
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", origin) // Replace with the actual origin of your frontend
+	origin := r.Header.Get("Origin")
+	w.Header().Set("Access-Control-Allow-Origin", origin)
 	w.Header().Set("Access-Control-Allow-Methods", "GET")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	//w.Header().Set("Access-Control-Allow-Credentials", "true") // Allow credentials (e.g., cookies)
@@ -131,8 +135,8 @@ type joinResponse struct {
 }
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
-	if util.HandlePreFlight(w, r) {
-		fmt.Println("handled preflight")
+	if HandlePreFlight(w, r) {
+		log.Println("handled preflight joinRoom")
 		return
 	}
 	log.Println(" -- /joinRoom --")
@@ -143,17 +147,6 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Credentials", "true") // Allow credentials (e.g., cookies)
 	w.Header().Set("Content-Type", "application/json")
 	playerId, err := retrieveAndValidateSessionCookie(r, false)
-	responded := false
-	defer func(w http.ResponseWriter, responded *bool) {
-		fmt.Println(responded)
-		//if !*responded {
-		//	w.WriteHeader(http.StatusInternalServerError)
-		//	_, err := w.Write([]byte("500 -  Internal error"))
-		//	if err != nil {
-		//		return
-		//	}
-		//}
-	}(w, &responded)
 	if err != nil {
 		log.Printf("Unable to join room: %v\n", err)
 		return
@@ -161,7 +154,6 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 	if player, exists := g.Players[playerId]; exists {
 		log.Printf("joining room: %v\n", player.DisplayName)
 		body, err := io.ReadAll(r.Body)
-		fmt.Println(body)
 		if err != nil {
 			http.Error(w, "Error reading request body", http.StatusBadRequest)
 			return
@@ -195,7 +187,6 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 					log.Printf("Player %v successfully added to room %v\n", player.DisplayName, r.RemoteAddr)
-					responded = true
 				}
 			} else {
 				log.Printf("ERROR: Player %v could not be added to room %v\n", player.DisplayName, room.RoomId)
@@ -207,7 +198,6 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			log.Printf("ERROR: Player %v could not be added to room %v room does not exist\n", player.DisplayName, requestData.RoomId)
-			responded = true
 		}
 	} else {
 		w.WriteHeader(http.StatusNotFound)
@@ -216,7 +206,6 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("ERROR player attempting to join %v does not exist\n", playerId)
-		responded = true
 	}
 }
 
@@ -254,10 +243,13 @@ type connectionResponse struct {
 // else, provide a cookie.
 // The client will have to then call /newPlayer (websocket)
 func connect(w http.ResponseWriter, r *http.Request) {
+	if HandlePreFlight(w, r) {
+		log.Println("handled preflight connect")
+		return
+	}
 	log.Println("-- /connect --")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	origin := r.Header.Get("Origin")
-	//fmt.Println(origin)
 	w.Header().Set("Access-Control-Allow-Origin", origin)
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
 	w.Header().Set("Access-Control-Allow-Credentials", "true") // Allow credentials (e.g., cookies)
@@ -308,7 +300,6 @@ func connect(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		return
 	} else { // existing player
 		player, _ := g.Players[cookie.Value]
 		log.Printf("Player already exists: %v\n", player.DisplayName)
@@ -320,7 +311,6 @@ func connect(w http.ResponseWriter, r *http.Request) {
 			Data:        nil, // board data is sent on connect of websocket
 		}
 		if marshaled, err := json.Marshal(response); err == nil {
-			fmt.Println(marshaled)
 			_, err := w.Write(marshaled)
 			if err != nil {
 				log.Printf("Error sending new connection response: %v\n", err)
@@ -373,6 +363,11 @@ func createNewPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
 func reinitializeExistingPlayer(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("sessionId")
 	if err != nil {
@@ -388,11 +383,6 @@ func reinitializeExistingPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 	player.Conn = ws
 	go player.StartListeningToClient()
-}
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
 }
 
 type ErrInvalidSessionCookie string
