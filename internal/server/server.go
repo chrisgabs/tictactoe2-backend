@@ -40,6 +40,7 @@ func setupRoutes() {
 	http.HandleFunc("/connect", connect)
 	http.HandleFunc("/ws/newPlayer", createNewPlayer)                 // ws
 	http.HandleFunc("/ws/existingPlayer", reinitializeExistingPlayer) // ws
+	http.HandleFunc("/leave", reassignRoom)
 	http.HandleFunc("/test", test)
 }
 
@@ -115,12 +116,20 @@ func sampleEndpoint(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Sender: %v %v\n", g.Players[playerID], playerID)
 	}
 	log.Println("= Rooms")
-	for key, value := range g.Rooms {
-		log.Printf("	[%v] %v", key, *value)
+	if len(g.Rooms) != 0 {
+		for key, value := range g.Rooms {
+			log.Printf("	[%v] %v", key, *value)
+		}
+	} else {
+		log.Println("List of rooms are empty")
 	}
 	log.Println("= Players")
-	for key, value := range g.Players {
-		log.Printf("	[%v] %v", key, *value)
+	if len(g.Players) != 0 {
+		for key, value := range g.Players {
+			log.Printf("	[%v] %v", key, *value)
+		}
+	} else {
+		log.Println("List of players are empty")
 	}
 	log.Println("=========")
 }
@@ -132,6 +141,7 @@ type joinRequest struct {
 type joinResponse struct {
 	OpponentDisplayName string `json:"opponentDisplayName"`
 	PlayerNumber        int    `json:"playerNumber"`
+	RoomId              string `json:"roomId"`
 }
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
@@ -332,6 +342,7 @@ func connect(w http.ResponseWriter, r *http.Request) {
 // A new room is also created upon creation of new player
 // parse body
 func createNewPlayer(w http.ResponseWriter, r *http.Request) {
+	log.Println("-- /[ws] create new player --")
 	cookie, err := r.Cookie("sessionId")
 	if err != nil {
 		fmt.Printf("Error retrieving cookie while creating player: %v\n", err)
@@ -369,9 +380,10 @@ var upgrader = websocket.Upgrader{
 }
 
 func reinitializeExistingPlayer(w http.ResponseWriter, r *http.Request) {
+	log.Println("-- /[ws] reinitialize --")
 	cookie, err := r.Cookie("sessionId")
 	if err != nil {
-		fmt.Printf("Error retrieving cookie while creating player: %v\n", err)
+		fmt.Printf("Error retrieving cookie while reinitializing player: %v\n", err)
 	}
 	// get player
 	player := g.Players[cookie.Value]
@@ -383,6 +395,52 @@ func reinitializeExistingPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 	player.Conn = ws
 	go player.StartListeningToClient()
+}
+
+func reassignRoom(w http.ResponseWriter, r *http.Request) {
+	if HandlePreFlight(w, r) {
+		log.Println("handled preflight connect")
+		return
+	}
+	log.Println("-- /reassign --")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	origin := r.Header.Get("Origin")
+	w.Header().Set("Access-Control-Allow-Origin", origin)
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+	w.Header().Set("Access-Control-Allow-Credentials", "true") // Allow credentials (e.g., cookies)
+	w.Header().Set("Content-Type", "application/json")
+	cookie, err := r.Cookie("sessionId")
+	if err != nil {
+		fmt.Printf("Error retrieving cookie while reassigning player: %v\n", err)
+	}
+	// get player
+	p := g.Players[cookie.Value]
+	room := g.CreateRoom()
+	log.Printf("New Room Created: %v\n", room.RoomId)
+	_, playerAddedSuccessful := g.AddPlayerToRoom(p, room)
+	if playerAddedSuccessful {
+		log.Printf("Player %v successfully added to room %v\n", p.DisplayName, room.RoomId)
+	} else {
+		log.Printf("ERROR: Player %v could not be added to room %v\n", p.DisplayName, room.RoomId)
+		return
+	}
+	response := joinResponse{
+		OpponentDisplayName: "",
+		PlayerNumber:        p.PlayerNumber,
+		RoomId:              room.RoomId,
+	}
+	marshaled, err := json.Marshal(response)
+	if err != nil {
+		log.Printf("ERROR marshaling join request %v\n", err)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write(marshaled)
+		if err != nil {
+			log.Printf("ERROR responding to join request %v\n", err)
+			return
+		}
+		log.Printf("Player %v successfully added to room %v\n", p.DisplayName, r.RemoteAddr)
+	}
 }
 
 type ErrInvalidSessionCookie string

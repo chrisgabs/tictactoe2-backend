@@ -44,6 +44,7 @@ func (g *GameInstance) CreateRoom() *Room {
 		Board:       CreateEmptyBoard(),
 		Receiver:    make(chan *MessageData),
 		GameOngoing: false,
+		Game:        g,
 	}
 	return g.Rooms[name]
 }

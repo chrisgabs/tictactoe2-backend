@@ -9,6 +9,7 @@ type Room struct {
 	Board       Board
 	Receiver    chan *MessageData
 	GameOngoing bool
+	Game        *GameInstance
 }
 
 // StartGame Start receiving MessageData from players in the room
@@ -28,7 +29,9 @@ func (r *Room) StartGame() {
 	// 0 - send to all
 	for data := range r.Receiver {
 		if r.Player1 == nil || r.Player2 == nil {
-			return
+			if data.EventType != Leave {
+				return
+			}
 		}
 		if data.PlayerNumber == 1 {
 			r.Player2.ReceiveChannel <- data
@@ -70,6 +73,10 @@ func (r *Room) RemovePlayer(p *Player) {
 		r.Player1 = nil
 	} else {
 		r.Player2 = nil
+	}
+	if r.Player1 == nil && r.Player2 == nil {
+		delete(r.Game.Rooms, r.RoomId)
+		log.Printf("Killing room [%v]: No more players", r.RoomId)
 	}
 }
 

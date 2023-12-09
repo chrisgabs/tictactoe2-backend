@@ -54,7 +54,7 @@ func (p *Player) startVultureTask() {
 			log.Printf("Player [%v] TIMEDOUT", p.DisplayName)
 			close(p.ReceiveChannel)
 			p.Room.RemovePlayer(p)
-			p.Game.Players[p.SessionId] = nil
+			delete(p.Game.Players, p.SessionId)
 			return
 		}
 	}
@@ -133,16 +133,21 @@ func (p *Player) StartListeningToClient() {
 			response := MessageData{Reset, 0, data}
 			p.Room.Receiver <- &response
 			p.Room.Board.ResetBoard()
-		}
-	}
+		case Leave:
+			data := make(map[string]string)
+			data["DisplayName"] = p.DisplayName
+			response := MessageData{Leave, p.PlayerNumber, data}
+			p.Room.Receiver <- &response
+			p.Room.RemovePlayer(p)
+			p.Room.Board.ResetBoard()
+		} // case
+	} // for
 
-}
+} // function
 
 // StartListeningToRoom to be called only by the room player is in to ensure that p.ReceiveChannel exists
-// TODO: determine when to kill this go routine
-//   - create a timer that starts when there is no activity in ReceiveChannel. After N time, send
-//     send a health check. if health check fails, then kill the go routine and clean up player.
 func (p *Player) StartListeningToRoom() {
+	log.Printf("Player [%v] started listening to room [%v]\n", p.DisplayName, p.Room.RoomId)
 	defer func() {
 		log.Printf("[%v] Stopped listening to room [%v]\n", p.SessionId, p.Room.RoomId)
 	}()
