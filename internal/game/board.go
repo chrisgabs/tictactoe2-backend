@@ -50,6 +50,29 @@ func (board *Board) AsRawMessage() json.RawMessage {
 	return dataJSON
 }
 
+func (board *Board) checkForWin() bool {
+	b := board.b
+	// Check rows and columns
+	for i := 0; i < 3; i++ {
+		if b[i][0].playerNumber != 0 { // could be incorporated inside inner condition similar to diagonal condition
+			if b[i][0].playerNumber == b[i][1].playerNumber && b[i][1].playerNumber == b[i][2].playerNumber {
+				return true
+			}
+		}
+		if b[0][i].playerNumber != 0 {
+			if b[0][i].playerNumber == b[1][i].playerNumber && b[1][i].playerNumber == b[2][i].playerNumber {
+				return true
+			}
+		}
+	}
+
+	if ((b[0][0].playerNumber == b[1][1].playerNumber && b[1][1].playerNumber == b[2][2].playerNumber) && b[0][0].playerNumber != 0) ||
+		((b[0][2].playerNumber == b[1][1].playerNumber && b[1][1].playerNumber == b[2][0].playerNumber) && b[0][2].playerNumber != 0) {
+		return true
+	}
+	return false
+}
+
 func (board *Board) ResetBoard() {
 	board.b = [3][3]pieceData{}
 }

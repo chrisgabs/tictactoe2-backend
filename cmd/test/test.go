@@ -1,48 +1,32 @@
-package test
+package main
 
-import (
-	"encoding/json"
-	"fmt"
-)
-
-type Zoo struct {
-	Name    string
-	Animals []Animal
-}
-type Animal struct {
-	Species string
-	Says    string
+type Board struct {
+	b [3][3]pieceData
 }
 
-type connectionResponse struct {
-	NewPlayer   bool        `json:"newPlayer"`
-	GameOngoing bool        `json:"gameOngoing"`
-	DisplayName string      `json:"displayName"`
-	RoomId      string      `json:"roomId"`
-	Data        interface{} `json:"data"`
+type pieceData struct {
+	playerNumber int
+	piece        string
+}
+
+func checkForWin(b *Board) bool {
+	// Check rows and columns
+	for i := 0; i < 3; i++ {
+		if (b.b[i][0].playerNumber == b.b[i][1].playerNumber && b.b[i][1].playerNumber == b.b[i][2].playerNumber) ||
+			(b.b[0][i].playerNumber == b.b[1][i].playerNumber && b.b[1][i].playerNumber == b.b[2][i].playerNumber) {
+			return true
+		}
+	}
+
+	// Check diagonals
+	if (b.b[0][0].playerNumber == b.b[1][1].playerNumber && b.b[1][1].playerNumber == b.b[2][2].playerNumber) ||
+		(b.b[0][2].playerNumber == b.b[1][1].playerNumber && b.b[1][1].playerNumber == b.b[2][0].playerNumber) {
+		return true
+	}
+
+	return false
 }
 
 func main() {
-	//zoo := Zoo{"Magical Mystery Zoo",
-	//	[]Animal{
-	//		{"Cow", "Moo"},
-	//		{"Cat", "Meow"},
-	//		{"Fox", "???"},
-	//	},
-	//}
 
-	response := connectionResponse{
-		NewPlayer:   true,
-		GameOngoing: false,
-		DisplayName: "",
-		RoomId:      "",
-		Data:        nil,
-	}
-	responseJson, err := json.Marshal(response)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Println(response)
-	fmt.Println(responseJson)
 }

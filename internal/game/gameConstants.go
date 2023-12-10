@@ -9,4 +9,7 @@ const (
 	Join    = "join"
 	Reset   = "reset"
 	Leave   = "leave"
+	Win     = "win"
+
+	SendToAll = 0
 )

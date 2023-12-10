@@ -114,6 +114,13 @@ func (p *Player) StartListeningToClient() {
 				}
 				p.Room.Receiver <- &response
 				p.Room.Board.placePiece(dropData)
+				if p.Room.Board.checkForWin() {
+					data := make(map[string]string)
+					data["winner"] = p.DisplayName
+					response := MessageData{Win, SendToAll, data}
+					p.Room.Board.ResetBoard()
+					p.Room.Receiver <- &response
+				}
 			case DragEnd:
 				response := MessageData{DragEnd, p.PlayerNumber, message.Data}
 				p.Room.Receiver <- &response
@@ -133,7 +140,7 @@ func (p *Player) StartListeningToClient() {
 			case Reset:
 				data := make(map[string]string)
 				data["DisplayName"] = p.DisplayName
-				response := MessageData{Reset, 0, data}
+				response := MessageData{Reset, SendToAll, data}
 				p.Room.Receiver <- &response
 				p.Room.Board.ResetBoard()
 			case Leave:
