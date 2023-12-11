@@ -16,6 +16,7 @@ type Player struct {
 	Conn           *websocket.Conn
 	WSConnected    bool
 	Game           *GameInstance
+	IsReady        bool
 }
 
 type MoveData struct {
@@ -92,6 +93,14 @@ func (p *Player) StartListeningToClient() {
 			data["playerNumber"] = p.PlayerNumber
 			data["roomId"] = p.Room.RoomId
 			data["boardData"] = p.Room.Board.AsRawMessage()
+			data["playerWithTurn"] = p.Room.PlayerWithTurn
+			if p.Room.GameOngoing {
+				if p.PlayerNumber == 1 {
+					data["opponentDisplayName"] = p.Room.Player2.DisplayName
+				} else {
+					data["opponentDisplayName"] = p.Room.Player1.DisplayName
+				}
+			}
 			response := MessageData{Connect, p.PlayerNumber, data}
 			if err := p.Conn.WriteJSON(response); err != nil {
 				log.Printf("error in writing JSON 64: %v\n", err)
@@ -114,11 +123,10 @@ func (p *Player) StartListeningToClient() {
 				}
 				p.Room.Receiver <- &response
 				p.Room.Board.placePiece(dropData)
-				if p.Room.Board.checkForWin() {
+				if p.Room.Board.checkForWin() { // TODO: Should this be checked in Room.go instead?
 					data := make(map[string]string)
 					data["winner"] = p.DisplayName
 					response := MessageData{Win, SendToAll, data}
-					p.Room.Board.ResetBoard()
 					p.Room.Receiver <- &response
 				}
 			case DragEnd:
@@ -134,22 +142,28 @@ func (p *Player) StartListeningToClient() {
 				}
 				response := MessageData{Move, p.PlayerNumber, move}
 				p.Room.Receiver <- &response
-			case Join:
-				response := MessageData{Join, p.PlayerNumber, message.Data}
-				p.Room.Receiver <- &response
 			case Reset:
-				data := make(map[string]string)
-				data["DisplayName"] = p.DisplayName
+				data := make(map[string]interface{})
+				data["displayName"] = p.DisplayName
+				if p.Room.PlayerWithTurn == 1 {
+					p.Room.PlayerWithTurn = 2
+				} else {
+					p.Room.PlayerWithTurn = 1
+				}
+				data["playerWithTurn"] = p.Room.PlayerWithTurn
 				response := MessageData{Reset, SendToAll, data}
 				p.Room.Receiver <- &response
-				p.Room.Board.ResetBoard()
+				p.Room.ResetGame()
 			case Leave:
 				data := make(map[string]string)
 				data["DisplayName"] = p.DisplayName
 				response := MessageData{Leave, p.PlayerNumber, data}
 				p.Room.handleLeavingPlayer(&response)
 				p.Room.RemovePlayer(p)
-				p.Room.Board.ResetBoard()
+				p.Room.ResetGame()
+			case PlayerReady:
+				p.IsReady = true
+				p.Room.attemptGameStart()
 			} // switch
 		} // if
 	} // for

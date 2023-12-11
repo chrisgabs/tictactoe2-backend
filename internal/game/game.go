@@ -26,6 +26,7 @@ func (g *GameInstance) CreatePlayer(addr string, displayName string, ws *websock
 			Conn:           ws,
 			WSConnected:    false, // set to true when actual ws connection is confirmed
 			Game:           g,
+			IsReady:        false,
 		}
 		return g.Players[addr], true
 	}
@@ -40,11 +41,12 @@ func (g *GameInstance) CreateRoom() *Room {
 		}
 	}
 	g.Rooms[name] = &Room{
-		RoomId:      name,
-		Board:       CreateEmptyBoard(),
-		Receiver:    make(chan *MessageData),
-		GameOngoing: false,
-		Game:        g,
+		RoomId:         name,
+		Board:          CreateEmptyBoard(),
+		Receiver:       make(chan *MessageData),
+		GameOngoing:    false,
+		Game:           g,
+		PlayerWithTurn: 1,
 	}
 	return g.Rooms[name]
 }

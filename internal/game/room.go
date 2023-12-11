@@ -3,16 +3,18 @@ package game
 import "log"
 
 type Room struct {
-	RoomId      string
-	Player1     *Player
-	Player2     *Player
-	Board       Board
-	Receiver    chan *MessageData
-	GameOngoing bool
-	Game        *GameInstance
+	RoomId         string
+	Player1        *Player
+	Player2        *Player
+	Board          Board
+	Receiver       chan *MessageData
+	GameOngoing    bool
+	Game           *GameInstance
+	PlayerWithTurn int
 }
 
-// StartGame Start receiving MessageData from players in the room
+//	GameStart Start receiving MessageData from players in the room\
+//		game should only be started if both two players are connected in room
 func (r *Room) StartGame() {
 	log.Printf("Room [%v] game starting with players [%v] and [%v]\n", r.RoomId, r.Player1.SessionId, r.Player2.SessionId)
 	r.GameOngoing = true
@@ -72,6 +74,7 @@ func (r *Room) AddPlayer(p *Player) (int, bool) {
 	if r.Player1 != nil && r.Player2 != nil {
 		go r.StartGame()
 		r.notifyOpponent(p)
+		r.notifyGameStart()
 	}
 	return playerNumber, true
 }
@@ -96,4 +99,34 @@ func (r *Room) notifyOpponent(joiningPlayer *Player) {
 	//if r.GameOngoing {
 	r.Receiver <- &notification // gets stuck here if notification is not consumed (when opponent does not exist or game is not yet started)
 	//}
+}
+
+func (r *Room) notifyGameStart() {
+	data := make(map[string]int)
+	data["playerWithTurn"] = r.PlayerWithTurn
+	notification := MessageData{EventType: GameStart, PlayerNumber: SendToAll, Data: data}
+	r.Receiver <- &notification
+}
+
+func (r *Room) attemptGameStart() {
+	if r.Player1.IsReady && r.Player2.IsReady {
+		if r.PlayerWithTurn == 1 {
+			r.PlayerWithTurn = 2
+		} else {
+			r.PlayerWithTurn = 1
+		}
+		r.Player1.IsReady = false
+		r.Player2.IsReady = false
+		r.notifyGameStart()
+	}
+}
+
+func (r *Room) ResetGame() {
+	if r.Player1 != nil {
+		r.Player1.IsReady = false
+	}
+	if r.Player2 != nil {
+		r.Player2.IsReady = false
+	}
+	r.Board.ResetBoard()
 }
