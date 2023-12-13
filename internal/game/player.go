@@ -127,6 +127,7 @@ func (p *Player) StartListeningToClient() {
 					data := make(map[string]string)
 					data["winner"] = p.DisplayName
 					response := MessageData{Win, SendToAll, data}
+					p.Room.ResetGame()
 					p.Room.Receiver <- &response
 				}
 			case DragEnd:
