@@ -18,14 +18,14 @@ var g = game.GameInstance{
 
 //var frontendOrigin = fmt.Sprintf("%v%v:%v", FrontendProtocol, FrontendAddress, FrontendPort)
 
-func Run() {
+func Run(serverAddress string, serverPort string, certfilePath string, keyfilePath string) {
 
 	log.Println("Starting Server...")
 
 	setupRoutes()
 
-	log.Printf("Listening to %v:%v", ServerAddress, ServerPort)
-	err := http.ListenAndServeTLS(ServerAddress+":"+ServerPort, CertfilePath, KeyfilePath, nil)
+	log.Printf("Listening to %v:%v", serverAddress, serverPort)
+	err := http.ListenAndServeTLS(serverAddress+":"+serverPort, certfilePath, keyfilePath, nil)
 
 	if err != nil {
 		fmt.Printf("ERROR failed to listen and server %v\n", err)

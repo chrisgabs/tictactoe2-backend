@@ -1,13 +1,28 @@
 package main
 
 import (
+	"flag"
 	"github.com/chrisgabs/tictactoe2-backend/internal/server"
+	"log"
+	"os"
 )
 
 func main() {
-	//fmt.Println("hello world")
-	//setupRoutes()
-	//
-	//http.ListenAndServe(":8080", nil)
-	server.Run()
+	devMode := flag.Bool("dev", false, "Whether to run the application in development mode or not.")
+	flag.Parse()
+
+	serverAddress := server.ServerAddress
+	serverPort := server.ServerPort
+	certfilePath := server.CertfilePath
+	keyfilePath := server.KeyfilePath
+
+	if !*devMode {
+		log.Println("Running prod")
+		serverAddress = os.Getenv("SERVER_ADDRESS")
+		serverPort = os.Getenv("SERVER_PORT")
+		certfilePath = os.Getenv("CERTFILE_PATH")
+		keyfilePath = os.Getenv("KEYFILE_PATH")
+	}
+
+	server.Run(serverAddress, serverPort, certfilePath, keyfilePath)
 }
