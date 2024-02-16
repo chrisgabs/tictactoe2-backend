@@ -44,11 +44,11 @@ jobs:
       - name: Copy build file to server
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-          scp -i private_key /build/tictactoe ${USER_NAME}@${HOST_NAME}:/home/ec2-user/build
+          scp -o StrictHostKeyChecking=no -i private_key /build/tictactoe ${USER_NAME}@${HOST_NAME}:/home/ec2-user/build
           echo "Successfully copied build file
 
       - name: SSH into server
-        run: ssh -i private_key ${USER_NAME}@${HOST_NAME}
+        run: ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME}
 
       - name: Set environment variables in server
         run: |
