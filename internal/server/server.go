@@ -347,7 +347,7 @@ func createNewPlayer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Printf("Error retrieving cookie while creating player: %v\n", err)
 	}
-	displayName := "new player" + cookie.Value
+	displayName := cookie.Value
 	log.Printf("Creating new player: %v | %v\n", cookie.Value, displayName)
 	//upgrade socket
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }

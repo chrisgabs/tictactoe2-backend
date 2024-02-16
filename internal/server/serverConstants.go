@@ -1,8 +1,8 @@
 package server
 
 const (
-	ServerAddress    = "192.168.20.7"
-	ServerPort       = "8080"
+	ServerAddress    = "192.168.179.7"
+	ServerPort       = "443"
 	FrontendPort     = "5173"
 	FrontendAddress  = "localhost"
 	FrontendProtocol = "http://"

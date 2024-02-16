@@ -1,0 +1,65 @@
+name: build-and-deploy-project
+run-name: Build and Deploy TicTacToe Backend
+on:
+  push:
+    branches:
+      - main
+env:
+  PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+  HOST_NAME: ${{secrets.SSH_HOST}}
+  USER_NAME: ${{secrets.SSH_USER_NAME}}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up go
+        uses: actions/setup-go@v5.0.0
+        with:
+          go-version-file: 'go.mod'
+        run: | 
+          echo "Go is installed:"
+          go mod tidy
+      - name: Build the project
+        run: go build -C cmd/game -o ../../ main.go
+      - name: Archive build file
+        uses: actions/upload-artifact@v4
+        with:
+          name: tictactoe
+          path: main
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Retrieve build file
+        uses: actions/download-artifact@v4
+        with:
+          name: tictactoe
+          path: ./build/tictactoe
+
+      - name: Copy build file to server
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          scp -i private_key /build/tictactoe ${USER_NAME}@${HOST_NAME}:/home/ec2-user/build
+          echo "Successfully copied build file
+
+      - name: SSH into server
+        run: ssh -i private_key ${USER_NAME}@${HOST_NAME}
+
+      - name: Set environment variables in server
+        run: |
+          export PATH="/usr/local/go/bin:$PATH"
+          export SERVER_ADDRESS=${{secrets.EC2_SERVER_ADDRESS}}
+          export SERVER_PORT=${{secrets.EC2_PORT}}
+          export CERTFILE_PATH=${{secrets.CERT_PATH}}
+          export KEYFILE_PATH=${{secrets.KEY_PATH}}
+
+      - name: Run tictactoe
+        run: |
+          cd build
+          sudo ./main
