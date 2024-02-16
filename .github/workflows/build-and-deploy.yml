@@ -54,9 +54,10 @@ jobs:
           echo "Setting environment variables..."
           export PATH="/usr/local/go/bin:$PATH"
           export SERVER_ADDRESS=${{secrets.EC2_SERVER_ADDRESS}}
-          export SERVER_PORT=${{secrets.EC2_PORT}}
+          export SERVER_PORT=${{secrets.EC2_SERVER_PORT}}
           export CERTFILE_PATH=${{secrets.CERT_PATH}}
           export KEYFILE_PATH=${{secrets.KEY_PATH}}
+          export TEST_PATH=lasdlkj
           # Run the build          
           echo "Starting tictactoe..."
           cd build

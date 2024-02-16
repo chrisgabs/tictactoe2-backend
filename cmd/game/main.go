@@ -22,6 +22,11 @@ func main() {
 		serverPort = os.Getenv("SERVER_PORT")
 		certfilePath = os.Getenv("CERTFILE_PATH")
 		keyfilePath = os.Getenv("KEYFILE_PATH")
+		log.Println("ENVIRONMENT VARIABLES:")
+		log.Println(serverAddress)
+		log.Println(serverPort)
+		log.Println(certfilePath)
+		log.Println(keyfilePath)
 	}
 
 	server.Run(serverAddress, serverPort, certfilePath, keyfilePath)
