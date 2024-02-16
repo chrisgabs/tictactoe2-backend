@@ -45,7 +45,7 @@ jobs:
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           scp -o StrictHostKeyChecking=no -i private_key ./build/tictactoe/main ${USER_NAME}@${HOST_NAME}:/home/ec2-user/build
-          echo "Successfully copied build file
+          echo "Successfully copied build file"
 
       - name: SSH into server
         run: ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME}
