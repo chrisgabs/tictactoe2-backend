@@ -63,5 +63,5 @@ jobs:
           echo "Starting tictactoe..."
           cd build
           chmod +x ./main
-          sudo -E nohup ./main
+          sudo -E nohup ./main &
           EOF
