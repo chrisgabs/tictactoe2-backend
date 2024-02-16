@@ -50,7 +50,6 @@ jobs:
       - name: SSH into server
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} 'bash -s' << 'EOF'
-          pwd
           # Set environment variables
           echo "Setting environment variables..."
           export PATH="/usr/local/go/bin:$PATH"
@@ -61,6 +60,6 @@ jobs:
           # Run the build          
           echo "Starting tictactoe..."
           cd build
-          pwd
+          chmod +x ./main
           sudo nohup ./main
           EOF
