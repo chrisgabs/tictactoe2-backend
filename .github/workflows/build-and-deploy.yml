@@ -53,12 +53,12 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} 'bash -s' << 'EOF'
           # Set environment variables
           echo "Setting environment variables..."
-          export PATH="/usr/local/go/bin:$PATH"
-          export SERVER_ADDRESS=${{secrets.EC2_SERVER_ADDRESS}}
-          export SERVER_PORT=${{secrets.EC2_SERVER_PORT}}
-          export CERTFILE_PATH=${{secrets.CERT_PATH}}
-          export KEYFILE_PATH=${{secrets.KEY_PATH}}
-          export TEST_PATH=lasdlkj
+          echo "export PATH=\"/usr/local/go/bin:$PATH\"" >> ~/.bashrc
+          echo "export SERVER_ADDRESS=${{secrets.EC2_SERVER_ADDRESS}}" >> ~/.bashrc
+          echo "export SERVER_PORT=${{secrets.EC2_SERVER_PORT}}" >> ~/.bashrc
+          echo "export CERTFILE_PATH=${{secrets.CERT_PATH}}" >> ~/.bashrc
+          echo "export KEYFILE_PATH=${{secrets.KEY_PATH}}" >> ~/.bashrc
+          source ~/.bashrc  # Load the updated .bashrc to apply the changes
           # Run the build          
           echo "Starting tictactoe..."
           cd build
