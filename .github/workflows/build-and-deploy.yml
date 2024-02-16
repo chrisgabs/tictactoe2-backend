@@ -48,19 +48,18 @@ jobs:
           echo "Successfully copied build file"
 
       - name: SSH into server
-        run: ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME}
-
-      - name: Set environment variables in server
         run: |
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME}
           pwd
+          # Set environment variables
+          echo "Setting environment variables..."
           export PATH="/usr/local/go/bin:$PATH"
           export SERVER_ADDRESS=${{secrets.EC2_SERVER_ADDRESS}}
           export SERVER_PORT=${{secrets.EC2_PORT}}
           export CERTFILE_PATH=${{secrets.CERT_PATH}}
           export KEYFILE_PATH=${{secrets.KEY_PATH}}
-
-      - name: Run tictactoe
-        run: |
+          # Run the build          
+          echo "Starting tictactoe..."
           cd build
           pwd
           sudo ./main
