@@ -52,6 +52,7 @@ jobs:
 
       - name: Set environment variables in server
         run: |
+          pwd
           export PATH="/usr/local/go/bin:$PATH"
           export SERVER_ADDRESS=${{secrets.EC2_SERVER_ADDRESS}}
           export SERVER_PORT=${{secrets.EC2_PORT}}
@@ -61,4 +62,5 @@ jobs:
       - name: Run tictactoe
         run: |
           cd build
+          pwd
           sudo ./main
