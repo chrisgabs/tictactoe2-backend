@@ -19,9 +19,8 @@ jobs:
         uses: actions/setup-go@v5.0.0
         with:
           go-version-file: 'go.mod'
-        run: | 
-          echo "Go is installed:"
-          go mod tidy
+      - name: Go mod tidy
+        run: go mod tidy
       - name: Build the project
         run: go build -C cmd/game -o ../../ main.go
       - name: Archive build file
