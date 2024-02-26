@@ -53,9 +53,15 @@ func (p *Player) startVultureTask() {
 		}
 		if timedOut {
 			log.Printf("Player [%v] TIMEDOUT", p.DisplayName)
-			close(p.ReceiveChannel)
-			p.Room.RemovePlayer(p)
-			delete(p.Game.Players, p.SessionId)
+			_, exists := p.Game.Players[p.SessionId]
+			if exists {
+				close(p.ReceiveChannel)
+				p.Room.RemovePlayer(p)
+				delete(p.Game.Players, p.SessionId)
+				log.Printf("Player [%v] successfully removed from game", p.DisplayName)
+			} else {
+				log.Printf("Player [%v] already does not exist in game", p.DisplayName)
+			}
 			return
 		}
 	}
